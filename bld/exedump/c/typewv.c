@@ -175,7 +175,14 @@ static void array_index( unsigned_8 *ptr, unsigned_8 size )
 /*********************************************************/
 {
     Wdputs( "          high bound = " );
-    Puthex( *ptr, 2*size );
+    if( size < 2) {
+        Puthex( *ptr, 2*size );
+    } else if( size < 4) {
+        Puthex( *(unsigned_16 *)ptr, 2*size );
+    } else {
+        Puthex( *(unsigned_32 *)ptr, 2*size );
+    }
+/*    Puthex( *ptr, 2*size ); */
     base_type_index( ptr+size );
 }
 
@@ -187,17 +194,26 @@ static void bit_field_struct( unsigned_8 *buff, unsigned_8 size, bool bit )
 {
     unsigned_8  *ptr;
     unsigned_16 index;
+    char        name[256];
 
     ptr = buff+2+size;
     if( bit ) {
         ptr += 2;
     }
     ptr = Get_type_index( ptr, &index );
+    Get_local_name( name, ptr, buff );
     Wdputs( "          \"" );
-    Dump_local_name( ptr, buff );
+    Wdputs( name );
     Wdputs( "\"  offset = " );
     ptr = buff+2;
-    Puthex( *ptr, 2*size );
+    if( size < 2 ) {
+        Puthex( *ptr, 2*size );
+    } else if( size < 4 ) {
+        Puthex( *(unsigned_16 *)ptr, 2*size );
+    } else {
+        Puthex( *(unsigned_32 *)ptr, 2*size );
+    }
+/*    Puthex( *ptr, 2*size );  */
     Wdputs( "  type idx = " );
     Putdec( index );
     if( bit ) {
@@ -219,6 +235,7 @@ static void bit_field_class( unsigned_8 *buff, bool bit )
 {
     unsigned_8  *ptr;
     unsigned_16 index;
+    char        name[256];
 
     ptr = buff+3;
     Wdputs( "          field locator = " );
@@ -227,8 +244,9 @@ static void bit_field_class( unsigned_8 *buff, bool bit )
         ptr += 2;
     }
     ptr = Get_type_index( ptr, &index );
+    Get_local_name( name, ptr, buff );
     Wdputs( "          name = \"" );
-    Dump_local_name( ptr, buff );
+    Wdputs( name );
     Wdputs( "\"  type idx = " );
     Putdec( index );
     Wdputslc( "\n          attribute = " );
@@ -251,10 +269,24 @@ static void range( unsigned_8 *ptr, unsigned_8 size )
 /***************************************************/
 {
     Wdputs( "          low bound = " );
-    Puthex( *ptr, 2 * size );
+    if( size < 2 ) {
+        Puthex( *ptr, 2*size );
+    } else if( size < 4 ) {
+        Puthex( *(unsigned_16 *)ptr, 2*size );
+    } else {
+        Puthex( *(unsigned_32 *)ptr, 2*size );
+    }
+/*    Puthex( *ptr, 2*size );  */
     Wdputs( "   high bound = " );
     ptr += size;
-    Puthex( *ptr, 2 * size );
+    if( size < 2 ) {
+        Puthex( *ptr, 2*size );
+    } else if( size < 4 ) {
+        Puthex( *(unsigned_16 *)ptr, 2*size );
+    } else {
+        Puthex( *(unsigned_32 *)ptr, 2*size );
+    }
+/*    Puthex( *ptr, 2*size );  */
     ptr += size;
     base_type_index( ptr );
 }
@@ -265,10 +297,22 @@ static void range( unsigned_8 *ptr, unsigned_8 size )
 static void enum_const( unsigned_8 *buff, unsigned_8 size )
 /*********************************************************/
 {
+    unsigned_8 *ptr;
+    char        name[256];
+
+    Get_local_name( name, buff+2+size, buff );
     Wdputs( "          \"" );
-    Dump_local_name( buff + 2 + size, buff );
+    Wdputs( name );
     Wdputs( "\"   value = " );
-    Puthex( *(buff+2), 2*size );
+    ptr = buff+2;
+    if( size < 2 ) {
+        Puthex( *ptr, 2*size );
+    } else if( size < 4 ) {
+        Puthex( *(unsigned_16 *)ptr, 2*size );
+    } else {
+        Puthex( *(unsigned_32 *)ptr, 2*size );
+    }
+/*    Puthex( *(buff+2), 2*size );  */
     Wdputslc( "\n" );
 }
 
@@ -323,7 +367,10 @@ void Dmp_type( int cnt, unsigned_32 *offs )
     unsigned_16 index;
     unsigned_16 curr_index;
     unsigned_32 coff;
+    char        name[256];
     unsigned_8  buff[256];
+
+    curr_index = 0;  /* use type index for all blocks */
 
     for( i = 0; i < cnt; i++ ) {
         coff = 0;
@@ -332,7 +379,7 @@ void Dmp_type( int cnt, unsigned_32 *offs )
         Wdputs( ":  offset " );
         Puthex( offs[i], 8 );
         Wdputslc( "\n" );
-        curr_index = 0;
+/*      curr_index = 0; */
         for( ;; ) {
             Wlseek( coff + Curr_sectoff + offs[i] );
             Wread( buff, sizeof( buff ) );
@@ -343,25 +390,28 @@ void Dmp_type( int cnt, unsigned_32 *offs )
             switch( buff[1] ) {
             case SCALAR:
                 StartType( "SCALAR", ++curr_index );
-                ptr = buff + 3;
+                ptr = buff+3;
+                Get_local_name( name, ptr, buff );
                 Wdputs( "          \"" );
-                Dump_local_name( ptr, buff );
+                Wdputs( name );
                 Wdputs( "\"  scalar type = " );
                 scalar_type( buff[2] );
                 Wdputslc( "\n" );
                 break;
             case SCOPE:
                 StartType( "SCOPE", ++curr_index);
+                Get_local_name( name, ptr, buff );
                 Wdputs( "          \"" );
-                Dump_local_name( ptr, buff );
+                Wdputs( name );
                 Wdputslc( "\"\n" );
                 break;
             case NAME:
                 StartType( "NAME", ++curr_index);
                 ptr = Get_type_index( ptr, &index );
                 ptr = Get_type_index( ptr, &index );
+                Get_local_name( name, ptr, buff );
                 Wdputs( "          \"" );
-                Dump_local_name( ptr, buff );
+                Wdputs( name );
                 Wdputs( "\"  type idx = " );
                 Putdec( index );
                 Wdputs( "  scope idx = " );
@@ -468,7 +518,7 @@ void Dmp_type( int cnt, unsigned_32 *offs )
             case CLIST:
                 StartType( "ENUM_LIST", ++curr_index);
                 Wdputs( "          number of consts = " );
-                Puthex( *ptr, 4 );
+                Puthex( *(unsigned_16 *)ptr, 4 );  /*Puthex( *ptr, 4 );*/
                 Wdputs( "   scalar type = " );
                 scalar_type( buff[4] );
                 Wdputslc( "\n" );
@@ -485,14 +535,18 @@ void Dmp_type( int cnt, unsigned_32 *offs )
                 Wdputslc( "CONST_LONG\n" );
                 enum_const( buff, 4 );
                 break;
+            case CONST_LONG_I64:
+                Wdputslc( "CONST_LONG_I64\n" );
+                enum_const( buff, 8 );
+                break;
             case FLIST:
                 StartType( "FIELD_LIST", ++curr_index);
                 Wdputs( "          number of fields = " );
-                Puthex( *ptr, 4 );
+                Puthex( *(unsigned_16 *)ptr, 4 );/*Puthex( *ptr, 4 );*/
                 if( buff[0] > 4 ) {
                     Wdputs( "   size = " );
                     ptr += 2;
-                    Puthex( *ptr, 8 );
+                    Puthex( *(unsigned_32 *)ptr, 8);/*Puthex( *ptr, 8 );*/
                 }
                 Wdputslc( "\n" );
                 break;
@@ -566,13 +620,13 @@ void Dmp_type( int cnt, unsigned_32 *offs )
             case CHAR_WORD:
                 StartType( "CHAR_WORD", ++curr_index);
                 Wdputs( "        length = " );
-                Puthex( *ptr, 4 );
+                Puthex( *(unsigned_16 *)ptr, 4 );/*Puthex( *ptr, 4 );*/
                 Wdputslc( "\n" );
                 break;
             case CHAR_LONG:
                 StartType( "CHAR_LONG", ++curr_index);
                 Wdputs( "        length = " );
-                Puthex( *ptr, 8 );
+                Puthex( *(unsigned_32 *)ptr, 8 );/*Puthex( *ptr, 8 );*/
                 Wdputslc( "\n" );
                 break;
             case CHAR_IND:
