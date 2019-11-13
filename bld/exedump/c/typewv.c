@@ -131,11 +131,11 @@ static void param_type_index( unsigned_8 num_params, unsigned_8 *ptr )
 {
     unsigned_8  i;
     unsigned_16 index;
-
-    if( *ptr & 0x80 ) {
-        num_params /= 2;
-    }
+    
     for( i = 0; i < num_params; i++ ) {
+        if (*ptr & 0x80) {
+		    num_params--;
+		}
         Wdputslc( "\n" );
         Wdputs( "            param " );
         Putdec( i+1 );
